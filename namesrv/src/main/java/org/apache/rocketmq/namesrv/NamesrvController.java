@@ -74,21 +74,27 @@ public class NamesrvController {
     }
 
     public boolean initialize() {
-
+        // lrk:加载KV配置
         this.kvConfigManager.load();
 
+        // lrk:构造Netty服务端
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
 
+        // lrk:初始化远程服务执行器
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
 
+        // lrk:注册执行器
         this.registerProcessor();
 
+        // lrk:启动定时任务，扫描不活跃Broker，延迟5s执行，周期为10s
         this.scheduledExecutorService.scheduleAtFixedRate(NamesrvController.this.routeInfoManager::scanNotActiveBroker, 5, 10, TimeUnit.SECONDS);
 
+        // lrk:启动定时任务，打印KV配置全部参数，延迟1s执行，周期为10s
         this.scheduledExecutorService.scheduleAtFixedRate(NamesrvController.this.kvConfigManager::printAllPeriodically, 1, 10, TimeUnit.MINUTES);
 
         if (TlsSystemConfig.tlsMode != TlsMode.DISABLED) {
+            // lrk:注册监听器，证书变化时，用来重新加载SSL上下文？
             // Register a listener to reload SslContext
             try {
                 fileWatchService = new FileWatchService(
@@ -141,8 +147,10 @@ public class NamesrvController {
     }
 
     public void start() throws Exception {
+        // lrk:启动Netty服务端
         this.remotingServer.start();
 
+        // lrk:启动FileWatchService，监听证书变化
         if (this.fileWatchService != null) {
             this.fileWatchService.start();
         }

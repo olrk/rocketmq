@@ -54,6 +54,8 @@ public class BrokerStartup {
     public static InternalLogger log;
 
     public static void main(String[] args) {
+        // 设置日志位置
+        System.setProperty("user.home", "E:/project/rocketmq/rocketmq");
         start(createBrokerController(args));
     }
 
