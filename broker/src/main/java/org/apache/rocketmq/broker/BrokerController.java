@@ -239,14 +239,15 @@ public class BrokerController {
     }
 
     public boolean initialize() throws CloneNotSupportedException {
+        // lrk:加载topic配置、消费偏移量、订阅组、消费过滤
         boolean result = this.topicConfigManager.load();
-
         result = result && this.consumerOffsetManager.load();
         result = result && this.subscriptionGroupManager.load();
         result = result && this.consumerFilterManager.load();
 
         if (result) {
             try {
+                // lrk:初始化DefaultMessageStore等消息存储相关的实例
                 this.messageStore =
                     new DefaultMessageStore(this.messageStoreConfig, this.brokerStatsManager, this.messageArrivingListener,
                         this.brokerConfig);
@@ -265,13 +266,17 @@ public class BrokerController {
             }
         }
 
+        // lrk:加载commit log、consume queue等
         result = result && this.messageStore.load();
 
         if (result) {
+            // lrk:初始化NettyRemotingServer
             this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.clientHousekeepingService);
             NettyServerConfig fastConfig = (NettyServerConfig) this.nettyServerConfig.clone();
+            // lrk:第三个端口了，这个又是用来干嘛？
             fastConfig.setListenPort(nettyServerConfig.getListenPort() - 2);
             this.fastRemotingServer = new NettyRemotingServer(fastConfig, this.clientHousekeepingService);
+            // lrk:初始化9种线程池执行器，比如发送消息的、推送消息的、查询消息的
             this.sendMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getSendMessageThreadPoolNums(),
                 this.brokerConfig.getSendMessageThreadPoolNums(),
@@ -344,10 +349,12 @@ public class BrokerController {
                 Executors.newFixedThreadPool(this.brokerConfig.getConsumerManageThreadPoolNums(), new ThreadFactoryImpl(
                     "ConsumerManageThread_"));
 
+            // lrk:注册执行器
             this.registerProcessor();
 
             final long initialDelay = UtilAll.computeNextMorningTimeMillis() - System.currentTimeMillis();
             final long period = 1000 * 60 * 60 * 24;
+            // lrk:开启定时任务，记录一天的消息量，延迟到明天0点执行，周期为1天
             this.scheduledExecutorService.scheduleAtFixedRate(() -> {
                 try {
                     BrokerController.this.getBrokerStats().record();
@@ -356,6 +363,7 @@ public class BrokerController {
                 }
             }, initialDelay, period, TimeUnit.MILLISECONDS);
 
+            // lrk:开启定时任务，持久化消费偏移量，延迟10s执行，周期默认为5s
             this.scheduledExecutorService.scheduleAtFixedRate(() -> {
                 try {
                     BrokerController.this.consumerOffsetManager.persist();
@@ -435,6 +443,7 @@ public class BrokerController {
                 }
             }
 
+            // lrk:注册tls监听器
             if (TlsSystemConfig.tlsMode != TlsMode.DISABLED) {
                 // Register a listener to reload SslContext
                 try {

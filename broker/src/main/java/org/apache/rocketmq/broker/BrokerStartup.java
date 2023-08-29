@@ -106,6 +106,7 @@ public class BrokerStartup {
 
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
+            // lrk:netty服务端，监听10911端口，10911用来干嘛？
             nettyServerConfig.setListenPort(10911);
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
 
@@ -175,6 +176,7 @@ public class BrokerStartup {
                 brokerConfig.setBrokerId(-1);
             }
 
+            // lrk:这个端口又用来干嘛
             messageStoreConfig.setHaListenPort(nettyServerConfig.getListenPort() + 1);
             LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
             JoranConfigurator configurator = new JoranConfigurator();
