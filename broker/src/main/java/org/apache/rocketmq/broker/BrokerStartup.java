@@ -55,7 +55,7 @@ public class BrokerStartup {
 
     public static void main(String[] args) {
         // 设置日志位置
-        System.setProperty("user.home", "E:/project/rocketmq/rocketmq");
+        System.setProperty("user.home", "D:/project/olrk/rocketmq");
         start(createBrokerController(args));
     }
 
@@ -93,6 +93,7 @@ public class BrokerStartup {
 
         try {
             //PackageConflictDetect.detectFastjson();
+            // lrk:构造命令行参数
             Options options = ServerUtil.buildCommandlineOptions(new Options());
             commandLine = ServerUtil.parseCmdLine("mqbroker", args, buildCommandlineOptions(options),
                 new PosixParser());

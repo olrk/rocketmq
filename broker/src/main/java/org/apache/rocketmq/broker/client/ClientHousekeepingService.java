@@ -40,6 +40,7 @@ public class ClientHousekeepingService implements ChannelEventListener {
 
     public void start() {
 
+        // lrk:定时任务，扫描并移除不活跃的channel，延迟10s执行，周期为10s
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {

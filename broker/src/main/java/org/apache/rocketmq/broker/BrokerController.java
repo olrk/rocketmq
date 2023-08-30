@@ -266,7 +266,7 @@ public class BrokerController {
             }
         }
 
-        // lrk:加载commit log、consume queue等
+        // lrk:DefaultMessageStore加载commit log、consume queue等
         result = result && this.messageStore.load();
 
         if (result) {
@@ -275,8 +275,9 @@ public class BrokerController {
             NettyServerConfig fastConfig = (NettyServerConfig) this.nettyServerConfig.clone();
             // lrk:第三个端口了，这个又是用来干嘛？
             fastConfig.setListenPort(nettyServerConfig.getListenPort() - 2);
+            // lrk:fastRemotingServer跟remotingServer有什么区别？
             this.fastRemotingServer = new NettyRemotingServer(fastConfig, this.clientHousekeepingService);
-            // lrk:初始化9种线程池执行器，比如发送消息的、推送消息的、查询消息的
+            // lrk:初始化9种线程池，比如发送消息的、拉取消息的、查询消息的
             this.sendMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getSendMessageThreadPoolNums(),
                 this.brokerConfig.getSendMessageThreadPoolNums(),
@@ -349,7 +350,7 @@ public class BrokerController {
                 Executors.newFixedThreadPool(this.brokerConfig.getConsumerManageThreadPoolNums(), new ThreadFactoryImpl(
                     "ConsumerManageThread_"));
 
-            // lrk:注册执行器
+            // lrk:注册执行器到对应服务上
             this.registerProcessor();
 
             final long initialDelay = UtilAll.computeNextMorningTimeMillis() - System.currentTimeMillis();
@@ -443,7 +444,7 @@ public class BrokerController {
                 }
             }
 
-            // lrk:注册tls监听器
+            // lrk:初始化ssl证书变化监听服务
             if (TlsSystemConfig.tlsMode != TlsMode.DISABLED) {
                 // Register a listener to reload SslContext
                 try {
@@ -484,8 +485,11 @@ public class BrokerController {
                     log.warn("FileWatchService created error, can't load the certificate dynamically");
                 }
             }
+            // lrk:初始化事务相关的服务和监听器，与事务消息有关？
             initialTransaction();
+            // lrk:初始化AccessValidator，注册rpc钩子，用来干嘛？
             initialAcl();
+            // lrk:初始化rpc钩子，跟上面的有什么不同
             initialRpcHooks();
         }
         return result;
@@ -854,14 +858,17 @@ public class BrokerController {
     }
 
     public void start() throws Exception {
+        // lrk:启动消息存储服务
         if (this.messageStore != null) {
             this.messageStore.start();
         }
 
+        // lrk:启动远程通信服务端（netty）
         if (this.remotingServer != null) {
             this.remotingServer.start();
         }
 
+        // lrk:启动vip远程通信服务端（netty，客户端有vipChannelEnabled配置项）
         if (this.fastRemotingServer != null) {
             this.fastRemotingServer.start();
         }
@@ -870,24 +877,30 @@ public class BrokerController {
             this.fileWatchService.start();
         }
 
+        // lrk:启动OuterAPI的远程通信客户端（netty）
         if (this.brokerOuterAPI != null) {
             this.brokerOuterAPI.start();
         }
 
+        // lrk:启动消息拉取消费长轮询服务
         if (this.pullRequestHoldService != null) {
             this.pullRequestHoldService.start();
         }
 
+        // lrk:启动客户端存活探针服务，客户端即生产者和消费者
         if (this.clientHousekeepingService != null) {
             this.clientHousekeepingService.start();
         }
 
         if (!messageStoreConfig.isEnableDLegerCommitLog()) {
+            // lrk:启动事务消息检查服务？
             startProcessorByHa(messageStoreConfig.getBrokerRole());
+            // lrk:启动slave broker同步服务？
             handleSlaveSynchronize(messageStoreConfig.getBrokerRole());
             this.registerBrokerAll(true, false, true);
         }
 
+        // lrk:定时任务，向所有namesrv注册，延迟10s执行，周期默认30s
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -900,10 +913,12 @@ public class BrokerController {
             }
         }, 1000 * 10, Math.max(10000, Math.min(brokerConfig.getRegisterNameServerPeriod(), 60000)), TimeUnit.MILLISECONDS);
 
+        // lrk:启动状态管理器
         if (this.brokerStatsManager != null) {
             this.brokerStatsManager.start();
         }
 
+        // lrk:定时任务，快速失败，清除过期的请求，延迟1s执行，周期10ms
         if (this.brokerFastFailure != null) {
             this.brokerFastFailure.start();
         }

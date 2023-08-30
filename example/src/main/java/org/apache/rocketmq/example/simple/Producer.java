@@ -24,7 +24,7 @@ import org.apache.rocketmq.remoting.common.RemotingHelper;
 
 public class Producer {
     public static void main(String[] args) throws MQClientException, InterruptedException {
-
+        // lrk:初始化DefaultMQProducer，入参是生产组名
         DefaultMQProducer producer = new DefaultMQProducer("ProducerGroupName");
         producer.start();
 
