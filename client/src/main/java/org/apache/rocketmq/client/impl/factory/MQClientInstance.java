@@ -232,14 +232,23 @@ public class MQClientInstance {
                     if (null == this.clientConfig.getNamesrvAddr()) {
                         this.mQClientAPIImpl.fetchNameServerAddr();
                     }
+                    // lrk:启动netty客户端
                     // Start request-response channel
                     this.mQClientAPIImpl.start();
+
+                    // lrk:启动5个定时任务
                     // Start various schedule tasks
                     this.startScheduledTask();
+
+                    // lrk:启动拉取消息服务？
                     // Start pull service
                     this.pullMessageService.start();
+
+                    // lrk:启动负载均衡器
                     // Start rebalance service
                     this.rebalanceService.start();
+
+                    // lrk:再次调用DefaultMQProducerImpl.start(boolean)，但入参为false，不会再进入当前方法
                     // Start push service
                     this.defaultMQProducer.getDefaultMQProducerImpl().start(false);
                     log.info("the client factory [{}] start OK", this.clientId);
@@ -255,6 +264,7 @@ public class MQClientInstance {
 
     private void startScheduledTask() {
         if (null == this.clientConfig.getNamesrvAddr()) {
+            // lrk:更新namesrv地址，延迟10s执行，周期为2分钟
             this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
                 @Override
@@ -268,6 +278,7 @@ public class MQClientInstance {
             }, 1000 * 10, 1000 * 60 * 2, TimeUnit.MILLISECONDS);
         }
 
+        // lrk:从namesrv更新路由信息，延迟10ms执行，周期默认为30s
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -280,6 +291,7 @@ public class MQClientInstance {
             }
         }, 10, this.clientConfig.getPollNameServerInterval(), TimeUnit.MILLISECONDS);
 
+        // lrk:移除下线的broker，给所有broker发送心跳，延迟1s执行，周围默认为30s
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -293,6 +305,7 @@ public class MQClientInstance {
             }
         }, 1000, this.clientConfig.getHeartbeatBrokerInterval(), TimeUnit.MILLISECONDS);
 
+        // lrk:持久化消费者offset下标，延迟10s执行，周期默认为5s
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -305,6 +318,7 @@ public class MQClientInstance {
             }
         }, 1000 * 10, this.clientConfig.getPersistConsumerOffsetInterval(), TimeUnit.MILLISECONDS);
 
+        // lrk:根据消息数量动态调整消费消息线程数量？
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
